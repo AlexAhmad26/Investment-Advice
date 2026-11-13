@@ -1,6 +1,5 @@
 from drafter import *
 from bakery import assert_equal
-from dataclasses import dataclass
 
 
 set_website_title("Investment Advice")
@@ -11,12 +10,26 @@ set_site_information(
     planning=["plan.pdf", "design.pdf"],
     links=["https://github.com/Alexahmad26/Investment-Advice"]
 )
-hide_debug_information()
-set_website_framed(False)
+
+# ---------------------------------------------------------------------------
+# ADVANCED TECHNIQUES USED (not covered in class) AND WHAT THEY DO
+#  1. try/except: tries code that might fail (turning text into a number) and
+#     runs the except block instead of crashing if it does.
+#  2. List unpacking with * : [*a, "x"] puts every item of list a into the new list.
+#  3. List comprehension: [s for s in items if ...] builds a filtered list in one line.
+#  4. Returning/unpacking tuples: a function returns two values at once, and
+#     "a, b = f()" stores them in two variables.
+#  5. String methods: .startswith() checks how text begins, .strip() removes
+#     extra spaces from the ends.
+#  6. f-string formatting: {x:.2f} shows 2 decimals, {x:.0f} shows none.
+#  7. Type hints like tuple[str, str] and list[Stock]: they only describe types.
+#  8. add_website_css: a Drafter function that sets page colors and fonts.
+# ---------------------------------------------------------------------------
+from dataclasses import dataclass
 
 set_website_title("Stock Helper")
 
-# Styling (wrapped so the site still runs if your Drafter version lacks this)
+# Styling (try/except means: if add_website_css isn't available, skip it instead of crashing)
 try:
     add_website_css("body", "background: #f2f6fb; font-family: 'Segoe UI', Arial, sans-serif; color: #22303f;")
     add_website_css("h1", "color: #1f3a5f; text-align: center;")
@@ -129,10 +142,12 @@ def get_verdict(state: State, stock: Stock) -> tuple[str, str]:
 
 
 def run_analysis(state: State, stock: Stock) -> None:
+    # Tuple unpacking (advanced technique #4): get_verdict returns two values at once
     stock.verdict, stock.reason = get_verdict(state, stock)
 
 
 def message_line(state: State) -> list:
+    # Returns a list so other pages can unpack it with * (advanced technique #2)
     if state.message != "":
         return [state.message]
     return []
@@ -163,7 +178,7 @@ def setup_page(state: State) -> Page:
         current = str(state.budget)
     return Page(state, [
         Header("💰 Setup", 2),
-        *message_line(state),
+        *message_line(state),  # * unpacking (advanced technique #2)
         "How much do you want to invest (in dollars)?",
         TextBox("budget", current),
         "How much risk are you comfortable with?",
@@ -175,6 +190,7 @@ def setup_page(state: State) -> Page:
 
 @route
 def save_setup(state: State, budget: str, risk_level: str) -> Page:
+    # try/except (advanced technique #1): float() crashes on text like 'abc'
     try:
         amount = float(budget)
     except ValueError:
@@ -231,6 +247,7 @@ def save_stock(state: State, name: str, price: str, low: str, high: str,
         state.message = "Please enter a stock name."
         return add_stock_page(state)
 
+    # try/except (advanced technique #1): float() crashes on text like 'abc'
     try:
         price_num = float(price)
         low_num = float(low)
@@ -306,6 +323,7 @@ def analyze_stock(state: State, stock_name: str) -> Page:
 
 @route
 def remove_stock(state: State, stock_name: str) -> Page:
+    # List comprehension (advanced technique #3): keep every stock except the removed one
     state.stocks = [s for s in state.stocks if s.name != stock_name]
     state.message = ""
     return watchlist_page(state)
@@ -347,124 +365,130 @@ def make_stock(name, price, low, high, cap, long_term):
     return Stock(name, price, low, high, cap, long_term, "Not analyzed yet", "")
 
 
-# get_verdict
-assert_equal(
-    get_verdict(State(100.0, "Medium", [], ""), make_stock("A", 150.0, 100.0, 200.0, 10.0, False)),
-    ("Can't afford", "The price ($150.00) is above your $100.00 budget."))
+def run_tests() -> None:
+    """Run every unit test. Kept inside a function so the test variables stay local
+    instead of becoming global variables."""
+    # get_verdict
+    assert_equal(
+        get_verdict(State(100.0, "Medium", [], ""), make_stock("A", 150.0, 100.0, 200.0, 10.0, False)),
+        ("Can't afford", "The price ($150.00) is above your $100.00 budget."))
 
-assert_equal(
-    get_verdict(State(1000.0, "Low", [], ""), make_stock("A", 10.0, 5.0, 20.0, 1.5, False)),
-    ("Too risky for you", "Its market cap is only $1.5B, which is small for a low-risk investor."))
+    assert_equal(
+        get_verdict(State(1000.0, "Low", [], ""), make_stock("A", 10.0, 5.0, 20.0, 1.5, False)),
+        ("Too risky for you", "Its market cap is only $1.5B, which is small for a low-risk investor."))
 
-assert_equal(
-    get_verdict(State(1000.0, "Medium", [], ""), make_stock("A", 10.0, 10.0, 40.0, 10.0, False)),
-    ("Good value - you could buy 100 shares",
-     "It's priced in the bottom third of its 52-week range ($10.00 - $40.00)."))
+    assert_equal(
+        get_verdict(State(1000.0, "Medium", [], ""), make_stock("A", 10.0, 10.0, 40.0, 10.0, False)),
+        ("Good value - you could buy 100 shares",
+         "It's priced in the bottom third of its 52-week range ($10.00 - $40.00)."))
 
-assert_equal(
-    get_verdict(State(1000.0, "Medium", [], ""), make_stock("A", 25.0, 10.0, 40.0, 10.0, False)),
-    ("Fairly priced - you could buy 40 shares",
-     "It's priced in the middle of its 52-week range ($10.00 - $40.00)."))
+    assert_equal(
+        get_verdict(State(1000.0, "Medium", [], ""), make_stock("A", 25.0, 10.0, 40.0, 10.0, False)),
+        ("Fairly priced - you could buy 40 shares",
+         "It's priced in the middle of its 52-week range ($10.00 - $40.00)."))
 
-assert_equal(
-    get_verdict(State(1000.0, "Medium", [], ""), make_stock("A", 38.0, 10.0, 40.0, 10.0, False)),
-    ("Expensive right now",
-     "It's priced in the top third of its 52-week range ($10.00 - $40.00)."))
+    assert_equal(
+        get_verdict(State(1000.0, "Medium", [], ""), make_stock("A", 38.0, 10.0, 40.0, 10.0, False)),
+        ("Expensive right now",
+         "It's priced in the top third of its 52-week range ($10.00 - $40.00)."))
 
-assert_equal(
-    get_verdict(State(1000.0, "Medium", [], ""), make_stock("A", 38.0, 10.0, 40.0, 10.0, True)),
-    ("Pricey now, but okay for long-term",
-     "It's in the top third of its 52-week range ($10.00 - $40.00), "
-     "but you plan to hold it for a year or more."))
+    assert_equal(
+        get_verdict(State(1000.0, "Medium", [], ""), make_stock("A", 38.0, 10.0, 40.0, 10.0, True)),
+        ("Pricey now, but okay for long-term",
+         "It's in the top third of its 52-week range ($10.00 - $40.00), "
+         "but you plan to hold it for a year or more."))
 
-assert_equal(
-    get_verdict(State(100.0, "Medium", [], ""), make_stock("A", 60.0, 50.0, 200.0, 10.0, False)),
-    ("Good value - you could buy 1 share (but a big chunk of your budget)",
-     "It's priced in the bottom third of its 52-week range ($50.00 - $200.00). "
-     "One share uses 60% of your budget, more than the 50% suggested for medium risk. "
-     "You could only buy 1 share, which leaves little room to diversify."))
+    assert_equal(
+        get_verdict(State(100.0, "Medium", [], ""), make_stock("A", 60.0, 50.0, 200.0, 10.0, False)),
+        ("Good value - you could buy 1 share (but a big chunk of your budget)",
+         "It's priced in the bottom third of its 52-week range ($50.00 - $200.00). "
+         "One share uses 60% of your budget, more than the 50% suggested for medium risk. "
+         "You could only buy 1 share, which leaves little room to diversify."))
 
-assert_equal(
-    get_verdict(State(100.0, "Medium", [], ""), make_stock("A", 40.0, 30.0, 120.0, 10.0, False)),
-    ("Good value - you could buy 2 shares",
-     "It's priced in the bottom third of its 52-week range ($30.00 - $120.00). "
-     "You could only buy 2 shares, which leaves little room to diversify."))
+    assert_equal(
+        get_verdict(State(100.0, "Medium", [], ""), make_stock("A", 40.0, 30.0, 120.0, 10.0, False)),
+        ("Good value - you could buy 2 shares",
+         "It's priced in the bottom third of its 52-week range ($30.00 - $120.00). "
+         "You could only buy 2 shares, which leaves little room to diversify."))
 
-assert_equal(
-    get_verdict(State(100.0, "Low", [], ""), make_stock("A", 30.0, 20.0, 100.0, 5.0, False)),
-    ("Good value - you could buy 3 shares (but a big chunk of your budget)",
-     "It's priced in the bottom third of its 52-week range ($20.00 - $100.00). "
-     "One share uses 30% of your budget, more than the 25% suggested for low risk."))
+    assert_equal(
+        get_verdict(State(100.0, "Low", [], ""), make_stock("A", 30.0, 20.0, 100.0, 5.0, False)),
+        ("Good value - you could buy 3 shares (but a big chunk of your budget)",
+         "It's priced in the bottom third of its 52-week range ($20.00 - $100.00). "
+         "One share uses 30% of your budget, more than the 25% suggested for low risk."))
 
-assert_equal(
-    get_verdict(State(1000.0, "Medium", [], ""), make_stock("A", 10.0, 10.0, 10.0, 10.0, False)),
-    ("Fairly priced - you could buy 100 shares",
-     "It's priced in the middle of its 52-week range ($10.00 - $10.00)."))
+    assert_equal(
+        get_verdict(State(1000.0, "Medium", [], ""), make_stock("A", 10.0, 10.0, 10.0, 10.0, False)),
+        ("Fairly priced - you could buy 100 shares",
+         "It's priced in the middle of its 52-week range ($10.00 - $10.00)."))
 
-# run_analysis
-analysis_stock = make_stock("A", 150.0, 100.0, 200.0, 10.0, False)
-run_analysis(State(100.0, "Medium", [], ""), analysis_stock)
-assert_equal(analysis_stock.verdict, "Can't afford")
-assert_equal(analysis_stock.reason, "The price ($150.00) is above your $100.00 budget.")
+    # run_analysis
+    analysis_stock = make_stock("A", 150.0, 100.0, 200.0, 10.0, False)
+    run_analysis(State(100.0, "Medium", [], ""), analysis_stock)
+    assert_equal(analysis_stock.verdict, "Can't afford")
+    assert_equal(analysis_stock.reason, "The price ($150.00) is above your $100.00 budget.")
 
-# verdict_icon
-assert_equal(verdict_icon("Good value - you could buy 3 shares"), "✅")
-assert_equal(verdict_icon("Fairly priced - you could buy 3 shares"), "🟡")
-assert_equal(verdict_icon("Expensive right now"), "⚠️")
-assert_equal(verdict_icon("Can't afford"), "❌")
-assert_equal(verdict_icon("Not analyzed yet"), "⚪")
+    # verdict_icon
+    assert_equal(verdict_icon("Good value - you could buy 3 shares"), "✅")
+    assert_equal(verdict_icon("Fairly priced - you could buy 3 shares"), "🟡")
+    assert_equal(verdict_icon("Expensive right now"), "⚠️")
+    assert_equal(verdict_icon("Can't afford"), "❌")
+    assert_equal(verdict_icon("Not analyzed yet"), "⚪")
 
-# message_line
-assert_equal(message_line(State(0.0, "Medium", [], "")), [])
-assert_equal(message_line(State(0.0, "Medium", [], "Oops")), ["Oops"])
+    # message_line
+    assert_equal(message_line(State(0.0, "Medium", [], "")), [])
+    assert_equal(message_line(State(0.0, "Medium", [], "Oops")), ["Oops"])
 
-# save_setup
-state = State(0.0, "Medium", [], "")
-save_setup(state, "abc", "Low")
-assert_equal(state.message, "Budget must be a number.")
+    # save_setup
+    state = State(0.0, "Medium", [], "")
+    save_setup(state, "abc", "Low")
+    assert_equal(state.message, "Budget must be a number.")
 
-state = State(0.0, "Medium", [], "")
-save_setup(state, "-5", "Low")
-assert_equal(state.message, "Budget must be greater than 0.")
+    state = State(0.0, "Medium", [], "")
+    save_setup(state, "-5", "Low")
+    assert_equal(state.message, "Budget must be greater than 0.")
 
-state = State(0.0, "Medium", [], "")
-save_setup(state, "500", "High")
-assert_equal((state.budget, state.risk_level), (500.0, "High"))
+    state = State(0.0, "Medium", [], "")
+    save_setup(state, "500", "High")
+    assert_equal((state.budget, state.risk_level), (500.0, "High"))
 
-# save_stock
-state = State(100.0, "Medium", [], "")
-save_stock(state, "  ", "10", "5", "20", "3", False)
-assert_equal(state.message, "Please enter a stock name.")
+    # save_stock
+    state = State(100.0, "Medium", [], "")
+    save_stock(state, "  ", "10", "5", "20", "3", False)
+    assert_equal(state.message, "Please enter a stock name.")
 
-state = State(100.0, "Medium", [], "")
-save_stock(state, "AAPL", "ten", "5", "20", "3", False)
-assert_equal(state.message, "Price, 52-week low/high, and market cap must be numbers.")
+    state = State(100.0, "Medium", [], "")
+    save_stock(state, "AAPL", "ten", "5", "20", "3", False)
+    assert_equal(state.message, "Price, 52-week low/high, and market cap must be numbers.")
 
-state = State(100.0, "Medium", [], "")
-save_stock(state, "AAPL", "10", "30", "20", "3", False)
-assert_equal(state.message, "Price must be above 0 and the 52-week low can't exceed the high.")
+    state = State(100.0, "Medium", [], "")
+    save_stock(state, "AAPL", "10", "30", "20", "3", False)
+    assert_equal(state.message, "Price must be above 0 and the 52-week low can't exceed the high.")
 
-state = State(100.0, "Medium", [], "")
-save_stock(state, " AAPL ", "10", "5", "20", "3", True)
-assert_equal(state.stocks, [Stock("AAPL", 10.0, 5.0, 20.0, 3.0, True, "Not analyzed yet", "")])
+    state = State(100.0, "Medium", [], "")
+    save_stock(state, " AAPL ", "10", "5", "20", "3", True)
+    assert_equal(state.stocks, [Stock("AAPL", 10.0, 5.0, 20.0, 3.0, True, "Not analyzed yet", "")])
 
-# analyze_stock
-state = State(100.0, "Medium", [make_stock("A", 150.0, 100.0, 200.0, 10.0, False),
-                                 make_stock("B", 150.0, 100.0, 200.0, 10.0, False)], "")
-analyze_stock(state, "A")
-assert_equal([s.verdict for s in state.stocks], ["Can't afford", "Not analyzed yet"])
+    # analyze_stock
+    state = State(100.0, "Medium", [make_stock("A", 150.0, 100.0, 200.0, 10.0, False),
+                                     make_stock("B", 150.0, 100.0, 200.0, 10.0, False)], "")
+    analyze_stock(state, "A")
+    assert_equal([s.verdict for s in state.stocks], ["Can't afford", "Not analyzed yet"])
 
-# analyze_all
-state = State(100.0, "Medium", [make_stock("A", 150.0, 100.0, 200.0, 10.0, False),
-                                 make_stock("B", 150.0, 100.0, 200.0, 10.0, False)], "")
-analyze_all(state)
-assert_equal([s.verdict for s in state.stocks], ["Can't afford", "Can't afford"])
+    # analyze_all
+    state = State(100.0, "Medium", [make_stock("A", 150.0, 100.0, 200.0, 10.0, False),
+                                     make_stock("B", 150.0, 100.0, 200.0, 10.0, False)], "")
+    analyze_all(state)
+    assert_equal([s.verdict for s in state.stocks], ["Can't afford", "Can't afford"])
 
-# remove_stock
-state = State(100.0, "Medium", [make_stock("A", 10.0, 5.0, 20.0, 10.0, False),
-                                 make_stock("B", 10.0, 5.0, 20.0, 10.0, False)], "")
-remove_stock(state, "A")
-assert_equal([s.name for s in state.stocks], ["B"])
+    # remove_stock
+    state = State(100.0, "Medium", [make_stock("A", 10.0, 5.0, 20.0, 10.0, False),
+                                     make_stock("B", 10.0, 5.0, 20.0, 10.0, False)], "")
+    remove_stock(state, "A")
+    assert_equal([s.name for s in state.stocks], ["B"])
+
+
+run_tests()
 
 
 start_server(State(0.0, "Medium", [], ""))
