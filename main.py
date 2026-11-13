@@ -2,6 +2,18 @@ from drafter import *
 from bakery import assert_equal
 from dataclasses import dataclass
 
+
+set_website_title("Investment Advice")
+set_site_information(
+    author="Alex Ahmad",
+    description="Help people make good financial decisions when investing",
+    sources="Thanks to the Drafter docs and my friends.",
+    planning=["plan.pdf", "design.pdf"],
+    links=["https://github.com/Alexahmad26/Investment-Advice"]
+)
+hide_debug_information()
+set_website_framed(False)
+
 set_website_title("Stock Helper")
 
 # Styling (wrapped so the site still runs if your Drafter version lacks this)
